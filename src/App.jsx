@@ -396,7 +396,7 @@ export default function App() {
             <h1 className="gcPageTitle">CX as Code Bundler</h1>
             <span className="gcBetaBadge">Beta</span>
           </div>
-          <p className="gcPageSubtitle">A ready-to-wear starter for <code>genesyscloud_tf_export</code>. Bundler seeds <code>include_filter_resources</code>, suggests <code>replace_with_datasource</code> from the dependency tree, and sets <code>enable_dependency_resolution = true</code>. Tailor the rest yourself.</p>
+          <p className="gcPageSubtitle">A ready-to-wear starter for <code>genesyscloud_tf_export</code>.</p>
         </div>
         <div className="gcPageMeta">
           <div className="gcHeaderLinks">
