@@ -184,6 +184,14 @@ export default function App() {
     return parsePastedResourceTypes(selectedBundle.pastedIncludeFilterResources);
   }, [selectedBundle.pastedIncludeFilterResources]);
 
+  const unassignedResources = useMemo(() => {
+    return getAvailableBundleResources({
+      resources: allResources,
+      assigned,
+      query: '',
+    });
+  }, [assigned, allResources]);
+
   const availableResources = useMemo(() => {
     const selectedSet = new Set(selectedBundleResources);
 
@@ -223,8 +231,16 @@ export default function App() {
       };
     }
 
+    if (resourceDialogType === 'available') {
+      return {
+        title: 'Available resources',
+        description: 'Resource types not assigned to any bundle.',
+        resources: unassignedResources,
+      };
+    }
+
     return null;
-  }, [allResources, resourceDialogType, selectedResources]);
+  }, [allResources, resourceDialogType, selectedResources, unassignedResources]);
 
   const model = useMemo(() => {
     return buildBundleModel({
@@ -425,10 +441,10 @@ export default function App() {
           <div className="mini-stat-heading"><p className="eyebrow">Selected</p><strong>{stats.selectedResourceCount}</strong></div>
           <span>Across bundles</span>
         </button>
-        <div className="stat-card mini-stat">
+        <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('available')}>
           <div className="mini-stat-heading"><p className="eyebrow">Available</p><strong>{stats.availableResourceCount}</strong></div>
           <span>Unassigned</span>
-        </div>
+        </button>
       </div>
 
       <section className="gcCard bundle-nav">
