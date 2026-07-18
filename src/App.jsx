@@ -25,6 +25,9 @@ import {
 
 const BUNDLED_RESOURCE_CATALOG = buildFallbackCatalog(resources);
 
+const TF_EXPORT_MODE_EXPORT = 'export';
+const TF_EXPORT_MODE_EXPORT_STATE = 'exportstate';
+
 function formatTerraformResourceList(values) {
   return values.map(value => `    "${value}"`).join(',\n');
 }
@@ -37,10 +40,11 @@ function getLegacyArchitectFlowExporterLine(bundle) {
   return '  use_legacy_architect_flow_exporter = false\n';
 }
 
-function buildTfExportTemplate(bundle) {
+function buildTfExportTemplate(bundle, mode = TF_EXPORT_MODE_EXPORT) {
   const includeFilterResources = bundle?.includeFilterResources || [];
   const replaceWithDatasource = bundle?.replaceWithDatasource || [];
   const tfExportResourceName = bundle?.tfExportResourceName || 'tf_export';
+  const isExportState = mode === TF_EXPORT_MODE_EXPORT_STATE;
 
   const includeFilterBlock = includeFilterResources.length === 0
     ? '  include_filter_resources           = []\n'
@@ -49,22 +53,26 @@ ${formatTerraformResourceList(includeFilterResources)}
   ]
 `;
 
-  const replaceWithDatasourceBlock = replaceWithDatasource.length === 0
+  const replaceWithDatasourceBlock = isExportState || replaceWithDatasource.length === 0
     ? '  replace_with_datasource            = []\n'
     : `  replace_with_datasource            = [
 ${formatTerraformResourceList(replaceWithDatasource)}
   ]
 `;
 
+  const legacyArchitectFlowExporterLine = isExportState
+    ? '  use_legacy_architect_flow_exporter = true\n'
+    : getLegacyArchitectFlowExporterLine(bundle);
+
   return `resource "genesyscloud_tf_export" "${tfExportResourceName}" {
   directory                          = "./genesyscloud"
-  enable_dependency_resolution       = true
+  enable_dependency_resolution       = ${isExportState ? 'false' : 'true'}
   export_format                      = "hcl"
   exclude_attributes                 = []
-  include_state_file                 = false
+  include_state_file                 = ${isExportState ? 'true' : 'false'}
 ${includeFilterBlock}  log_permission_errors              = true
 ${replaceWithDatasourceBlock}  split_files_by_resource            = false
-${getLegacyArchitectFlowExporterLine(bundle)}}`;
+${legacyArchitectFlowExporterLine}}`;
 }
 
 function buildDefaultBundle(name = 'export') {
@@ -94,6 +102,7 @@ export default function App() {
   const [query, setQuery] = useState('');
   const [selectedQuery, setSelectedQuery] = useState('');
   const [copiedOutput, setCopiedOutput] = useState(null);
+  const [tfExportMode, setTfExportMode] = useState(TF_EXPORT_MODE_EXPORT);
   const importRef = useRef(null);
   const allResources = resourceCatalog.resourceTypes;
 
@@ -231,8 +240,8 @@ export default function App() {
   }, [model.bundles, selectedBundle.name]);
 
   const selectedTfExportTemplate = useMemo(() => {
-    return buildTfExportTemplate(selectedGeneratedBundle);
-  }, [selectedGeneratedBundle]);
+    return buildTfExportTemplate(selectedGeneratedBundle, tfExportMode);
+  }, [selectedGeneratedBundle, tfExportMode]);
 
   function startAddingBundle() {
     setNewBundleName('');
@@ -370,71 +379,77 @@ export default function App() {
     }
   }
 
-  return <div className="app">
-    <header className="hero">
-      <div>
-        <p className="eyebrow">CX as Code Bundler</p>
-        <h1>Bundle pipeline exports without hand-maintaining dependency wiring.</h1>
-        <p className="subhead">A ready-to-wear starter for <code>genesyscloud_tf_export</code>. Bundler seeds <code>include_filter_resources</code>, suggests <code>replace_with_datasource</code> from the dependency tree, and sets <code>enable_dependency_resolution = true</code>. Tailor the rest yourself.</p>
-
-        <section className="card bundle-nav">
-          <div className="section-title">
-            <div><h2>Bundles</h2><p>Select a bundle to build its export template.</p></div>
-            <div className="bundle-nav-actions">
-              {!isAddingBundle && <button onClick={startAddingBundle}><Plus size={16}/> Add bundle</button>}
-            </div>
+  return <div className="gcShell">
+    <header className="gcPageHeader">
+      <div className="gcPageTitleRow">
+        <div className="gcPageTitleGroup">
+          <div className="gcPageTitleLine">
+            <h1 className="gcPageTitle">CX as Code Bundler</h1>
+            <span className="gcBetaBadge">Beta</span>
           </div>
-          {isAddingBundle && <div className="field add-bundle-form">
-            <label>Add bundle</label>
-            <div className="inline">
-              <input value={newBundleName} onChange={event => setNewBundleName(event.target.value)} placeholder="export-name" />
-              <button onClick={addBundle}><CheckCircle2 size={16}/> Save</button>
-              <button className="ghost" onClick={cancelAddingBundle}>Cancel</button>
-            </div>
-          </div>}
-          <div className="bundle-list">
-            {bundles.map(bundle => <button key={bundle.id} className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'} onClick={() => { setSelectedBundleId(bundle.id); setQuery(''); setSelectedQuery(''); }}>
-              <span><strong>{bundle.name}</strong><small>{getBundleResources(bundle).length} selected</small></span>
-              {bundles.length > 1 && <Trash2 className="danger" size={16} onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }} />}
-            </button>)}
+          <p className="gcPageSubtitle">A ready-to-wear starter for <code>genesyscloud_tf_export</code>. Bundler seeds <code>include_filter_resources</code>, suggests <code>replace_with_datasource</code> from the dependency tree, and sets <code>enable_dependency_resolution = true</code>. Tailor the rest yourself.</p>
+        </div>
+        <div className="gcPageMeta">
+          <div className="gcHeaderLinks">
+            <input ref={importRef} type="file" accept="application/json,.json" onChange={importWorkspaceFile} hidden />
+            <button type="button" className="gcHeaderLink" onClick={() => importRef.current?.click()}><Upload size={14}/> Import</button>
+            <button type="button" className="gcHeaderLink" onClick={downloadWorkspace} disabled={bundles.length === 0} title={bundles.length === 0 ? 'Create a bundle before exporting a workspace.' : 'Export workspace JSON'}><Download size={14}/> Export</button>
+            <button type="button" className="gcClearButton" onClick={reset}><RotateCcw size={14}/> Reset</button>
           </div>
-        </section>
-      </div>
-      <div className="hero-actions">
-        <div className="hero-action-buttons">
-          <input ref={importRef} type="file" accept="application/json,.json" onChange={importWorkspaceFile} hidden />
-          <button className="ghost" onClick={() => importRef.current?.click()}><Upload size={16}/> Import</button>
-          <button className="secondary" onClick={downloadWorkspace} disabled={bundles.length === 0} title={bundles.length === 0 ? 'Create a bundle before exporting a workspace.' : 'Export workspace JSON'}><Download size={16}/> Export</button>
-          <button className="ghost" onClick={reset}><RotateCcw size={16}/> Reset</button>
-        </div>
-        <div className="catalog-version-row">
-          <label htmlFor="catalog-version-select">Version:</label>
-          <select id="catalog-version-select" className="catalog-version-select" aria-label="Dependency catalog version" value={selectedCatalogVersion} onChange={event => setSelectedCatalogVersion(event.target.value)}>
-            {catalogVersionOptions.map(version => <option key={version} value={version}>{getDependencyTreeVersionLabel(version)}</option>)}
-          </select>
-        </div>
-        <div className="hero-stats">
-          <button className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('known')}>
-            <div className="mini-stat-heading"><p className="eyebrow">Known</p><strong>{stats.knownResourceCount}</strong></div>
-            <span>Resource types</span>
-          </button>
-          <button className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('selected')}>
-            <div className="mini-stat-heading"><p className="eyebrow">Selected</p><strong>{stats.selectedResourceCount}</strong></div>
-            <span>Across bundles</span>
-          </button>
-          <button className="stat-card mini-stat">
-            <div className="mini-stat-heading"><p className="eyebrow">Available</p><strong>{stats.availableResourceCount}</strong></div>
-            <span>Unassigned</span>
-          </button>
+          <div className="gcVersionPicker">
+            <span className="gcMetaLabel">Version:</span>
+            <select id="catalog-version-select" className="gcSelectInput" aria-label="Dependency catalog version" value={selectedCatalogVersion} onChange={event => setSelectedCatalogVersion(event.target.value)}>
+              {catalogVersionOptions.map(version => <option key={version} value={version}>{getDependencyTreeVersionLabel(version)}</option>)}
+            </select>
+          </div>
         </div>
       </div>
     </header>
 
+    <main className="gcContentArea">
+      <div className="stats-grid">
+        <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('known')}>
+          <div className="mini-stat-heading"><p className="eyebrow">Known</p><strong>{stats.knownResourceCount}</strong></div>
+          <span>Resource types</span>
+        </button>
+        <button type="button" className="stat-card mini-stat stat-button" onClick={() => setResourceDialogType('selected')}>
+          <div className="mini-stat-heading"><p className="eyebrow">Selected</p><strong>{stats.selectedResourceCount}</strong></div>
+          <span>Across bundles</span>
+        </button>
+        <div className="stat-card mini-stat">
+          <div className="mini-stat-heading"><p className="eyebrow">Available</p><strong>{stats.availableResourceCount}</strong></div>
+          <span>Unassigned</span>
+        </div>
+      </div>
+
+      <section className="gcCard bundle-nav">
+        <div className="section-title">
+          <div><h2>Bundles</h2><p>Select a bundle to build its export template.</p></div>
+          <div className="bundle-nav-actions">
+            {!isAddingBundle && <button type="button" className="gcHeaderLink" onClick={startAddingBundle}><Plus size={14}/> Add bundle</button>}
+          </div>
+        </div>
+        {isAddingBundle && <div className="field add-bundle-form">
+          <label htmlFor="new-bundle-name">Add bundle</label>
+          <div className="inline">
+            <input id="new-bundle-name" value={newBundleName} onChange={event => setNewBundleName(event.target.value)} placeholder="export-name" />
+            <button type="button" className="gcHeaderLink" onClick={addBundle}><CheckCircle2 size={14}/> Save</button>
+            <button type="button" className="gcClearButton" onClick={cancelAddingBundle}>Cancel</button>
+          </div>
+        </div>}
+        <div className="bundle-list">
+          {bundles.map(bundle => <button type="button" key={bundle.id} className={bundle.id === selectedBundleId ? 'bundle selected' : 'bundle'} onClick={() => { setSelectedBundleId(bundle.id); setQuery(''); setSelectedQuery(''); }}>
+            <span><strong>{bundle.name}</strong><small>{getBundleResources(bundle).length} selected</small></span>
+            {bundles.length > 1 && <Trash2 className="danger" size={14} onClick={event => { event.stopPropagation(); deleteBundle(bundle.id); }} />}
+          </button>)}
+        </div>
+      </section>
+
     {resourceDialog && <div className="dialog-backdrop" role="presentation" onClick={() => setResourceDialogType(null)}>
-        <section className="card resource-dialog" role="dialog" aria-modal="true" aria-labelledby="resource-dialog-title" onClick={event => event.stopPropagation()}>
+        <section className="gcCard resource-dialog" role="dialog" aria-modal="true" aria-labelledby="resource-dialog-title" onClick={event => event.stopPropagation()}>
           <div className="section-title">
             <div><h2 id="resource-dialog-title">{resourceDialog.title}</h2><p>{resourceDialog.description}</p></div>
-            <button className="ghost" onClick={() => setResourceDialogType(null)}>Close</button>
+            <button type="button" className="gcClearButton" onClick={() => setResourceDialogType(null)}>Close</button>
           </div>
           <div className="chips scroll short">
             {resourceDialog.resources.map(resource => <span className="chip" key={resource}>{resource}</span>)}
@@ -442,76 +457,46 @@ export default function App() {
         </section>
       </div>}
 
-      <main className="grid">
-        <section className="card mode-panel">
+      <div className="grid">
+        <section className="gcCard input-panel">
           <div className="section-title">
-            <div><h2>Input mode</h2><p>Choose how to build <strong>{selectedBundle.name}</strong>.</p></div>
+            <div>
+              <h2>{selectedBundleMode === 'catalog' ? 'Available resources' : 'include_filter_resources'}</h2>
+              <p>
+                {selectedBundleMode === 'catalog'
+                  ? 'Add resource types to export. Dependencies are expanded automatically in the export.'
+                  : <>Paste one whole resource type per line. Patterns like <code>::^Name$</code> are normalized to the bare type.</>}
+              </p>
+            </div>
+            <strong>{selectedBundleMode === 'catalog' ? availableResources.length : parsedPasteResourceTypes.length}</strong>
           </div>
-          <div className="mode-toggle">
-            <button type="button" className={selectedBundleMode === 'catalog' ? 'mode-option selected' : 'mode-option'} onClick={() => setSelectedBundleMode('catalog')}>Catalog</button>
-            <button type="button" className={selectedBundleMode === 'paste' ? 'mode-option selected' : 'mode-option'} onClick={() => setSelectedBundleMode('paste')}>Paste</button>
-          </div>
-          {selectedBundleMode === 'catalog' ? (
-            <p className="mode-help">Pick resource types from the catalog. Bundler expands dependencies into <code>include_filter_resources</code>.</p>
-          ) : (
-            <p className="mode-help">Paste whole resource types for <code>include_filter_resources</code>. Name patterns are normalized to the bare type. Bundler suggests <code>replace_with_datasource</code> from first-level dependencies.</p>
-          )}
-        </section>
 
-        {selectedBundleMode === 'catalog' ? <>
-        <section className="card available-panel">
-          <div className="section-title">
-            <div><h2>Available resources</h2><p>Add resource types to <strong>{selectedBundle.name}</strong>. Dependencies are expanded automatically in the export.</p></div>
-            <strong>{availableResources.length}</strong>
+          <div className="input-toolbar">
+            <div className="gcSegmentedControl" role="group" aria-label="Input mode">
+              <button type="button" className={selectedBundleMode === 'catalog' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedBundleMode === 'catalog'} onClick={() => setSelectedBundleMode('catalog')}>Catalog</button>
+              <button type="button" className={selectedBundleMode === 'paste' ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'} aria-checked={selectedBundleMode === 'paste'} onClick={() => setSelectedBundleMode('paste')}>Paste</button>
+            </div>
+            {selectedBundleMode === 'catalog' && <div className="search">
+              <Search size={16}/>
+              <input
+                type="search"
+                value={query}
+                onChange={event => setQuery(event.target.value)}
+                placeholder="filter e.g. flow, routing, outbound"
+              />
+              {query && <button type="button" className="search-clear" onClick={() => setQuery('')}>clear</button>}
+            </div>}
           </div>
-          <div className="search">
-            <Search size={16}/>
-            <input value={query} onChange={event => setQuery(event.target.value)} placeholder="filter e.g. flow, routing, outbound" />
-            {query && <button className="ghost search-clear" onClick={() => setQuery('')} type="button">clear</button>}
-          </div>
+
+          {selectedBundleMode === 'catalog' ? <>
           <div className="resource-list">
             {availableResources.map(resource => <div className="resource" key={resource}>
               <code>{resource}</code>
-              <button onClick={() => moveToBundle(resource)} title={`Add to ${selectedBundle.name}`}><ArrowRight size={14}/> add</button>
+              <button type="button" className="gcHeaderLink" onClick={() => moveToBundle(resource)} title={`Add to ${selectedBundle.name}`}><ArrowRight size={14}/> add</button>
             </div>)}
             {availableResources.length === 0 && <p className="empty">No available resources match that filter.</p>}
           </div>
-        </section>
-
-        <section className="card selected-panel">
-          <div className="section-title">
-            <div><h2>{selectedBundle.name}</h2><p>Primary resource types for this bundle. First-level dependencies drive <code>replace_with_datasource</code>.</p></div>
-            <strong>{selectedBundleResources.length}</strong>
-          </div>
-          <div className="search">
-            <Search size={16}/>
-            <input value={selectedQuery} onChange={event => setSelectedQuery(event.target.value)} placeholder="filter selected resources" />
-            {selectedQuery && <button className="ghost search-clear" onClick={() => setSelectedQuery('')} type="button">clear</button>}
-          </div>
-          <div className="resource-list">
-            {filteredSelectedBundleResources.map(resource => <div className="resource" key={resource}>
-              <code>{resource}</code>
-              <div className="actions">
-                <button className="ghost" onClick={() => removeFromBundle(resource, selectedBundle.id)}>remove</button>
-              </div>
-            </div>)}
-            {filteredSelectedBundleResources.length === 0 && <p className="empty">No selected resources match that filter.</p>}
-          </div>
-          {selectedGeneratedBundle?.firstLevelDependencies?.length > 0 && <div className="dependency-preview">
-            <p className="eyebrow">First-level dependencies</p>
-            <div className="chips scroll short">
-              {selectedGeneratedBundle.firstLevelDependencies.map(resource => <span className="chip" key={resource}>{resource}</span>)}
-            </div>
-          </div>}
-        </section>
-        </> : <section className="card paste-panel">
-          <div className="section-title">
-            <div>
-              <h2>include_filter_resources</h2>
-              <p>Paste one whole resource type per line. Patterns like <code>::^Name$</code> are normalized to the bare type.</p>
-            </div>
-            <strong>{parsedPasteResourceTypes.length}</strong>
-          </div>
+          </> : <>
           <textarea
             className="paste-input"
             value={selectedBundle.pastedIncludeFilterResources || ''}
@@ -531,21 +516,80 @@ export default function App() {
               {selectedGeneratedBundle.firstLevelDependencies.map(resource => <span className="chip" key={resource}>{resource}</span>)}
             </div>
           </div>}
-        </section>}
+          </>}
+        </section>
 
-        <section className="card output">
+        {selectedBundleMode === 'catalog' ? <>
+        <section className="gcCard selected-panel">
           <div className="section-title">
-            <div><h2>Generated export</h2><p>Preview for bundle: {selectedGeneratedBundle?.name || 'none'}.</p></div>
+            <div><h2>{selectedBundle.name}</h2><p>Primary resource types for this bundle. First-level dependencies drive <code>replace_with_datasource</code>.</p></div>
+            <strong>{selectedBundleResources.length}</strong>
+          </div>
+          <div className="search">
+            <Search size={16}/>
+            <input
+              type="search"
+              value={selectedQuery}
+              onChange={event => setSelectedQuery(event.target.value)}
+              placeholder="filter selected resources"
+            />
+            {selectedQuery && <button type="button" className="search-clear" onClick={() => setSelectedQuery('')}>clear</button>}
+          </div>
+          <div className="resource-list">
+            {filteredSelectedBundleResources.map(resource => <div className="resource" key={resource}>
+              <code>{resource}</code>
+              <div className="actions">
+                <button type="button" className="gcClearButton" onClick={() => removeFromBundle(resource, selectedBundle.id)}>remove</button>
+              </div>
+            </div>)}
+            {filteredSelectedBundleResources.length === 0 && <p className="empty">No selected resources match that filter.</p>}
+          </div>
+        </section>
+        </> : null}
+
+        <section className={selectedBundleMode === 'paste' ? 'gcCard output output-panel--paste' : 'gcCard output'}>
+          <div className="section-title">
+            <div>
+              <h2>Generated export</h2>
+              <p>
+                {tfExportMode === TF_EXPORT_MODE_EXPORT_STATE
+                  ? 'Generate a Terraform state file for existing resources — brownfield adoption and import workflows.'
+                  : 'Generate HCL configuration with dependency types exported as data sources.'}
+              </p>
+            </div>
           </div>
 
           <div className="generated-file">
             <div className="generated-file-header">
-              <h3>tf_export.tf</h3>
-              <button className="ghost copy-button" onClick={() => copyGeneratedOutput('tf_export.tf', selectedTfExportTemplate)} title="Copy tf_export.tf to clipboard"><ClipboardCopy size={14}/>{copiedOutput === 'tf_export.tf' ? 'Copied' : 'Copy'}</button>
+              <div className="generated-file-header__start">
+                <h3>main.tf</h3>
+                <div className="gcSegmentedControl" role="radiogroup" aria-label="Export template mode">
+                  <button
+                    type="button"
+                    className={tfExportMode === TF_EXPORT_MODE_EXPORT ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'}
+                    role="radio"
+                    aria-checked={tfExportMode === TF_EXPORT_MODE_EXPORT}
+                    onClick={() => setTfExportMode(TF_EXPORT_MODE_EXPORT)}
+                  >
+                    Export
+                  </button>
+                  <button
+                    type="button"
+                    className={tfExportMode === TF_EXPORT_MODE_EXPORT_STATE ? 'gcSegmentedControl__option selected' : 'gcSegmentedControl__option'}
+                    role="radio"
+                    aria-checked={tfExportMode === TF_EXPORT_MODE_EXPORT_STATE}
+                    onClick={() => setTfExportMode(TF_EXPORT_MODE_EXPORT_STATE)}
+                  >
+                    Export state
+                  </button>
+                </div>
+              </div>
+              <button type="button" className="gcCopyButton" onClick={() => copyGeneratedOutput('main.tf', selectedTfExportTemplate)} title="Copy main.tf to clipboard"><ClipboardCopy size={14}/>{copiedOutput === 'main.tf' ? 'Copied' : 'Copy'}</button>
             </div>
             <pre>{selectedTfExportTemplate}</pre>
           </div>
         </section>
-      </main>
+      </div>
+    </main>
   </div>;
 }

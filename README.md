@@ -1,4 +1,6 @@
-# CX as Code Bundler
+# CX as Code Bundler (Beta)
+
+**Live app:** [https://cxascode.github.io/bundler/](https://cxascode.github.io/bundler/)
 
 Bundle pipeline exports without hand-maintaining dependency wiring.
 
