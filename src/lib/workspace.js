@@ -1,6 +1,6 @@
 import { CORE_BUNDLE_NAME, getTfExportResourceName } from './resourceModel.js';
 
-export const WORKSPACE_SCHEMA = 'cxascode-bundler';
+export const WORKSPACE_SCHEMA = 'cxascode-exportbuilder';
 export const WORKSPACE_VERSION = 1;
 
 export function buildWorkspace({ bundles, model }) {

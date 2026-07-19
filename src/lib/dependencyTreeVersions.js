@@ -2,7 +2,7 @@ export const MIN_DEPENDENCY_TREE_VERSION = '1.60.0';
 export const LATEST_DEPENDENCY_TREE_VERSION = 'latest';
 export const DEPENDENCY_TREE_BASE_URL = 'https://cxascode.github.io/dependency-tree-merged-json';
 export const DEPENDENCY_TREE_INDEX_URL = `${DEPENDENCY_TREE_BASE_URL}/index.json`;
-const DEPENDENCY_TREE_VERSION_CACHE_KEY = 'cxascode-bundler-dependency-tree-version-cache';
+const DEPENDENCY_TREE_VERSION_CACHE_KEY = 'cxascode-exportbuilder-dependency-tree-version-cache';
 const DEPENDENCY_TREE_VERSION_CACHE_TTL_MS = 24 * 60 * 60 * 1000;
 
 export function buildDependencyTreeUrl(version = LATEST_DEPENDENCY_TREE_VERSION) {

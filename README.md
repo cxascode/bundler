@@ -1,12 +1,12 @@
-# CX as Code Bundler (Beta)
+# CX as Code Export Builder (Beta)
 
-**Live app:** [https://cxascode.github.io/bundler/](https://cxascode.github.io/bundler/)
+**Live app:** [https://cxascode.github.io/exportbuilder/](https://cxascode.github.io/exportbuilder/)
 
 Bundle pipeline exports without hand-maintaining dependency wiring.
 
-Bundler is a small React app built on **Genesys Spark** (`gux-*` components) that produces a ready-to-wear `genesyscloud_tf_export` block for CX as Code pipelines. It seeds `include_filter_resources`, suggests `replace_with_datasource` patterns from the Genesys Cloud dependency tree, and sets the cxascode-friendly defaults (`enable_dependency_resolution`, HCL export, and related settings). You tailor the rest — named regex filters, org-specific replace patterns, and anything beyond the starter.
+Export Builder is a small React app built on **Genesys Spark** (`gux-*` components) that produces a ready-to-wear `genesyscloud_tf_export` block for CX as Code pipelines. It seeds `include_filter_resources`, suggests `replace_with_datasource` patterns from the Genesys Cloud dependency tree, and sets the cxascode-friendly defaults (`enable_dependency_resolution`, HCL export, and related settings). You tailor the rest — named regex filters, org-specific replace patterns, and anything beyond the starter.
 
-## Why Bundler?
+## Why Export Builder?
 
 Writing a correct `genesyscloud_tf_export` block by hand means juggling three things at once:
 
@@ -14,13 +14,13 @@ Writing a correct `genesyscloud_tf_export` block by hand means juggling three th
 - Which related types should become **data sources** instead of managed resources
 - Which provider settings the cxascode pipeline expects
 
-Bundler handles the boilerplate so you can focus on the org-specific parts.
+Export Builder handles the boilerplate so you can focus on the org-specific parts.
 
 ## Modes
 
 ### Catalog
 
-Pick resource types from the live Genesys Cloud dependency catalog (with a bundled fallback for offline use). Bundler:
+Pick resource types from the live Genesys Cloud dependency catalog (with a bundled fallback for offline use). Export Builder:
 
 - Expands selected types into `include_filter_resources` using the dependency tree
 - Derives first-level dependencies
@@ -31,7 +31,7 @@ Catalog mode also tracks which types are assigned across bundles so you do not d
 
 ### Paste
 
-Paste whole resource types, one per line. Bundler normalizes each line to a bare type for `include_filter_resources` and builds replace suggestions from first-level dependencies. Paste mode is for when you already know the include list and do not need the catalog picker.
+Paste whole resource types, one per line. Export Builder normalizes each line to a bare type for `include_filter_resources` and builds replace suggestions from first-level dependencies. Paste mode is for when you already know the include list and do not need the catalog picker.
 
 ## Example output
 
@@ -60,7 +60,7 @@ Copy the generated block from the app, drop it into your cxascode repo, and adju
 
 ## Workspace files
 
-Export and import `bundler-workspace.json` to save bundles, switch between catalog versions, and share work with others before committing Terraform.
+Export and import `exportbuilder-workspace.json` to save bundles, switch between catalog versions, and share work with others before committing Terraform.
 
 ## Run locally
 
@@ -100,7 +100,7 @@ VITE_BASE_PATH=/
 ## Related tools
 
 - **Splitter** — models OrgSync split jobs (CSV excludes, multiple export templates)
-- **Bundler** — models cxascode pipeline exports (TF export block only, dependency-aware include/replace)
+- **Export Builder** — models cxascode pipeline exports (TF export block only, dependency-aware include/replace)
 
 ## License
 

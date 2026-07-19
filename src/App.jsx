@@ -394,7 +394,7 @@ export default function App() {
     if (bundles.length === 0) return;
 
     downloadJsonFile({
-      filename: 'bundler-workspace.json',
+      filename: 'exportbuilder-workspace.json',
       data: buildWorkspace({ bundles, model }),
     });
   }
@@ -423,7 +423,7 @@ export default function App() {
         setResourceDialogType(null);
         setQuery('');
       } catch {
-        window.alert('Unable to read that workspace file. Make sure it is a valid Bundler workspace JSON file.');
+        window.alert('Unable to read that workspace file. Make sure it is a valid Export Builder workspace JSON file.');
       }
     };
 
@@ -446,7 +446,7 @@ export default function App() {
       <div className="gcPageTitleRow">
         <div className="gcPageTitleGroup">
           <div className="gcPageTitleLine">
-            <h1 className="gcPageTitle">CX as Code Bundler</h1>
+            <h1 className="gcPageTitle">CX as Code Export Builder</h1>
             <span className="gcBetaBadge">Beta</span>
           </div>
           <p className="gcPageSubtitle">A ready-to-wear starter for <code>genesyscloud_tf_export</code>.</p>
