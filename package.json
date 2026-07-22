@@ -10,7 +10,7 @@
   },
   "dependencies": {
     "@vitejs/plugin-react": "latest",
-    "genesys-spark": "^4.258.0",
+    "genesys-spark": "^4.261.1",
     "vite": "latest",
     "react": "latest",
     "react-dom": "latest"
